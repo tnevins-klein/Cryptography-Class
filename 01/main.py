@@ -74,21 +74,71 @@ def break_single_byte(cbytes: bytearray, eng_ranks: bytearray) -> (int, bytearra
 
     return (valid_key, best_guess)
     
+def every_nth_byte(array, n, m):
+    return array[m::n]
+
+def decrypt_vingere(cbytes, ranks, KEY_LENGTH=4):
+    keys = []
+    messages = []
+    
+    for key_byte in range(KEY_LENGTH):
+        messages.append(cbytes[key_byte::KEY_LENGTH])
+
+    for i in range(len(messages)):
+        key, messages[i] = break_single_byte(messages[i], ranks)
+        keys.append(key)
+
+    out = []
+    for index in range(sum([len(message) for message in messages])):
+        out.append(messages[index % KEY_LENGTH][index // KEY_LENGTH])
+
+    print("\n" + bytearray(out).decode('utf-8'))
+    print("key:", bytearray(keys).decode())
+
+    return bytearray(out), bytearray(keys)
+
+
+def decrypt_vingere_guess(cbytes, ranks):
+    best_keylen = 1
+    best_d = float('inf')
+
+    print("len\td")
+    for key_length in range(2, 40):
+        d = 1/key_length * hamming_distance(cbytes[:key_length], cbytes[key_length:2*key_length])
+        print(key_length, round(d, 2), sep='\t')
+        if d < best_d:
+            best_d = d
+            best_keylen = int(key_length)
+
+    print("Guessed keylength:", best_keylen)
+    print()
+
+    return decrypt_vingere(cbytes, ranks, KEY_LENGTH=best_keylen)
+    
+
+def hamming_distance(a: bytearray, b: bytearray):
+    return sum([bin(x ^ y).count("1") for x, y in zip(a, b)])
 
 
 def main():
-    cbytes = read_ctext_file([0b00000000], 'awesome_pt.bin', )
+    cbytes = read_ctext_file([0b00000000], 'the.bin', )
     eng_ranks = gen_english_ranks()
-    key, message = break_single_byte(cbytes, eng_ranks)
-    print("\n" + message.decode('utf-8', errors='ignore'))
+
+    # decrypt_vingere(cbytes, eng_ranks)
+    decrypt_vingere_guess(cbytes[8:], eng_ranks)
 
 
+
+def main_enc():
+    plaintext = """In the context of this Game Manual, Teams contain three types of Student roles related to Robot build, design, and programming. See <G2> and <G4> for more information.Adults may not fulfill any of these roles.
+Builder – The Student(s) on the Team who assemble(s) the Robot.Adults are permitted to teach the Builder(s) how to use concepts or tools associated with Robot construction, but may never work on the Robot without the Builder(s) present and actively participating. 
+Designer – The Student(s) on the Team who design(s) the Robot. Adults are permitted to teach the Designer(s) how to use concepts or tools associated with design, but may never work on the design of the Robot without the Designer(s) present and actively participating. 
+Programmer – The Student(s) on the Team who write(s) the computer code that is downloaded onto the Robot. Adults are permitted to teach the Programmer(s) how to use concepts or tools associated with programming, but may never work on the code that goes on the Robot without the Programmer(s) present and actively participating.
 """
-def main():
+    
     b = plaintext.encode('utf-8')
-    with open('awesome_pt.bin', 'wb') as f:
-        f.write(singleByteXor(b, 49))
-"""
-
+    with open('the.bin', 'wb') as f:
+        f.write(vigenere(b, "vexyss".encode()))
+        
 if __name__ == '__main__':
     main()
